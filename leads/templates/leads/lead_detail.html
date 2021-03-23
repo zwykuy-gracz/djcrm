@@ -20,10 +20,13 @@
         </style>
     </head>
     <body>
-        <a href="/leads/">Go back</a>
+        <a href="{% url 'leads:lead-list' %}">Go back</a>
         <hr/>
         <h2>this is a detail of {{ lead.first_name }}</h2>
         <p>Age: {{ lead.age }}</p>
         <p>The agent responsible for this lead is {{ lead.agent }}</p>
+        <hr/>
+        <a href="{% url 'leads:lead-update' lead.pk %}">Update</a>
+        <a href="{% url 'leads:lead-delete' lead.pk %}">Delete</a>
     </body>
 </html>
