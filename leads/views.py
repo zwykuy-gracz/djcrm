@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.views import generic
 from agents.mixins import OrganisorAndLoginRequiredMixin
 from .models import Lead, Agent
-from .forms import LeadForm, LeadModelForm, CustomUserCreationForm
+from .forms import LeadForm, LeadModelForm, CustomUserCreationForm, AssignAgentForm
 
 
 class SignupView(generic.CreateView):
@@ -29,11 +29,24 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
     def get_queryset(self):
         user = self.request.user
         if user.is_organisor:
-            queryset = Lead.objects.filter(organisation=user.userprofile)
+            queryset = Lead.objects.filter(organisation=user.userprofile, agent__isnull=False)
         else:
-            queryset = Lead.objects.filter(organisation=user.agent.organisation)    
+            queryset = Lead.objects.filter(organisation=user.agent.organisation, agent__isnull=False)    
             queryset = queryset.filter(agent__user=user)
         return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super(LeadListView, self).get_context_data(**kwargs)
+        user = self.request.user
+        if user.is_organisor:
+            queryset = Lead.objects.filter(
+                organisation=user.userprofile, 
+                agent__isnull=True
+            )
+            context.update({
+                "unassigned_leads": queryset
+            })
+        return context
 
 
 def lead_list(request):
@@ -50,11 +63,12 @@ class LeadDetailView(OrganisorAndLoginRequiredMixin, generic.DetailView):
     def get_queryset(self):
         user = self.request.user
         if user.is_organisor:
-            queryset = Lead.objects.filter(organisation=user.userprofile)
+            queryset = Lead.objects.filter(organisation=user.userprofile, agent__isnull=False)
         else:
-            queryset = Lead.objects.filter(organisation=user.agent.organisation)    
+            queryset = Lead.objects.filter(organisation=user.agent.organisation, agent__isnull=False)    
             queryset = queryset.filter(agent__user=user)
         return queryset
+
 
 def lead_detail(request, pk):
     lead = Lead.objects.get(id=pk)
@@ -129,6 +143,15 @@ def lead_delete(request, pk):
     lead = Lead.objects.get(id=pk)
     lead.delete()
     return redirect("/leads")
+
+
+class AssignAgentView(OrganisorAndLoginRequiredMixin, generic.FormView):
+    template_name = 'leads/assign_agent.html'
+    form_class = AssignAgentForm
+
+    def get_success_url(self):
+        return reverse("leads:lead-list")
+
 
 # def lead_update(request, pk):
 #     lead = Lead.objects.get(id=pk)
